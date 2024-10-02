@@ -2,7 +2,7 @@
 
 Hey there! This is a template repository that contains the necessary boilerplate for [CS 131](https://ucla-cs-131.github.io/fall-24-website/)'s quarter-long project: making an interpreter. The project specs are as follows:
 
-1. [Project 1 Spec]() ***(TODO)***
+1. [Project 1 Spec](https://docs.google.com/document/d/1npomXM55cXg9Af7BUXEj3_bFpj1sy2Jty2Nwi6Kp64E/edit?usp=sharing)
 
 There are four stages to the project; students are currently at the first. Thus, this folder contains the necessary bootstrapping code:
 
@@ -22,7 +22,7 @@ Some notes on your submission (for Project 1)
 * `element.py`
 * `intbase.py`
 
-You can find out more about our autograder, including how to run it, in [its accompanying repo]() ***(TODO)***.
+You can find out more about our autograder, including how to run it, in [the accompanying repo](https://github.com/UCLA-CS-131/fall-24-autograder)
 
 ## Licensing and Attribution
 
