@@ -34,7 +34,6 @@ class Interpreter(InterpreterBase):
         self.func_name_to_ast = {}
         for func_def in ast.get("functions"):
             self.func_name_to_ast[func_def.get("name")] = func_def
-            print(func_def)
 
     def __get_func_by_name(self, name):
         if name not in self.func_name_to_ast:
@@ -62,6 +61,7 @@ class Interpreter(InterpreterBase):
             return self.__call_input(call_node)
 
         # add code here later to call other functions
+        return self.__run_statements(self.__get_func_by_name(func_name).get('statements'))
         super().error(ErrorType.NAME_ERROR, f"Function {func_name} not found")
 
     def __call_print(self, call_ast):
@@ -105,6 +105,8 @@ class Interpreter(InterpreterBase):
             return Value(Type.INT, expr_ast.get("val"))
         if expr_ast.elem_type == InterpreterBase.STRING_NODE:
             return Value(Type.STRING, expr_ast.get("val"))
+        if expr_ast.elem_type == InterpreterBase.BOOL_NODE:
+            return Value(Type.BOOL, expr_ast.get("val"))
         if expr_ast.elem_type == InterpreterBase.VAR_NODE:
             var_name = expr_ast.get("name")
             val = self.env.get(var_name)
@@ -153,9 +155,6 @@ class Interpreter(InterpreterBase):
         self.op_to_lambda[Type.INT]["=="] = lambda x, y: Value(
             Type.BOOL, x.value() == y.value()
         )
-        self.op_to_lambda[Type.STRING]["=="] = lambda x, y: Value(
-            Type.BOOL, x.value() == y.value()
-        )
         self.op_to_lambda[Type.INT]["<"] = lambda x, y: Value(
             Type.BOOL, x.value() < y.value()
         )
@@ -168,12 +167,19 @@ class Interpreter(InterpreterBase):
         self.op_to_lambda[Type.INT]["!="] = lambda x, y: Value(
             Type.BOOL, x.value() != y.value()
         )
-        self.op_to_lambda[Type.STRING]["!="] = lambda x, y: Value(
-            Type.BOOL, x.value() != y.value()
-        )
         self.op_to_lambda[Type.INT]["neg"] = lambda x: Value(
             Type.INT, (-x.value())
         )
+        # set up operations on strings
+        self.op_to_lambda[Type.STRING] = {}
+        self.op_to_lambda[Type.STRING]["=="] = lambda x, y: Value(
+            Type.BOOL, x.value() == y.value()
+        )
+        self.op_to_lambda[Type.STRING]["!="] = lambda x, y: Value(
+            Type.BOOL, x.value() != y.value()
+        )
+        # set up operations on booleans
+        self.op_to_lambda[Type.BOOL] = {}
         self.op_to_lambda[Type.BOOL]["!"] = lambda x: Value(
             Type.BOOL, (not x.value())
         )
@@ -181,9 +187,18 @@ class Interpreter(InterpreterBase):
 
 def main():
 	program_source = """
+    func nice() {
+        print(11111111111111);
+        var x;
+        x = true;
+        print(x);
+    }
 	func main() {
-		var user_input;
-		print(user_input);
+		var x;
+        x = 2;
+        
+		print(x);
+        nice();
 	}
 	"""
 	interpreter = Interpreter()
