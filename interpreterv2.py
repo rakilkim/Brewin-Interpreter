@@ -55,7 +55,7 @@ class Interpreter(InterpreterBase):
                     super().error(ErrorType.TYPE_ERROR, '')
                 if scope_vars[part][0] == None:
                     super().error(ErrorType.FAULT_ERROR, '')
-                location = scope_vars[part][0][0]
+                location = scope_vars[part][0]
                 break
             if is_func: 
                 super().error(ErrorType.NAME_ERROR, '')
@@ -133,7 +133,32 @@ class Interpreter(InterpreterBase):
         else:
             for scope_vars, is_func in self.vars[::-1]:
                 if name in scope_vars:
-                    scope_vars[name] = [self.run_expr(statement.get('expression')), scope_vars[name][1]]
+                    result = self.run_expr(statement.get('expression'))
+                    # if type(result) == list:
+                    #     result = result[0]
+                    type_a = type(result)
+                    var_type = scope_vars[name][1]
+                    if type(result) == bool:
+                        type_a = 'bool'
+                    elif type(result) == int:
+                        type_a = 'int'
+                        if var_type == 'bool':
+                            result = bool(result)
+                            type_a = 'bool'
+                    elif type(result) == str:
+                        type_a = 'string'
+                    else:
+                        if var_type != 'bool' and var_type != 'int' and var_type != 'string':
+                            if result == None:
+                                type_a = var_type
+                            else:
+                                type_a = result[1]
+                                result = result[0]
+                        else:
+                            type_a = 'error'
+                    if type_a != var_type:
+                        super().error(ErrorType.TYPE_ERROR, '') 
+                    scope_vars[name] = [result, var_type]
                     return
 
                 if is_func: break
@@ -198,9 +223,11 @@ class Interpreter(InterpreterBase):
                 if param_type != 'bool' and param_type != 'int' and param_type != 'string':
                     if a == None:
                         type_a = param_type
+                    else:
+                        type_a = a[1]
+                        a = a[0]
                 else:
-                    type_a = a[1]
-                    a = a[0]
+                    type_a = 'error'
             if type_a != param_type:
                 super().error(ErrorType.TYPE_ERROR, '') 
             passed_args.append([a, type_a])
@@ -209,15 +236,37 @@ class Interpreter(InterpreterBase):
         #passed_args = [self.run_expr(a) for a in args]
 
         self.vars.append(({k:v for k,v in zip(template_args, passed_args)}, True))
-        res, _ = self.run_statements(func_def.get('statements'))
+        res, ret = self.run_statements(func_def.get('statements'))
         self.vars.pop()
-
+        if return_type == 'void' and res != None:
+            super().error(ErrorType.TYPE_ERROR, '')
+        if res == None:
+            if return_type == 'int':
+                return 0
+            if return_type == 'bool':
+                return False
+            if return_type == 'string':
+                return ''
+        else:
+            if return_type == 'int':
+                if type(res) != int:
+                    super().error(ErrorType.TYPE_ERROR, '')
+            elif return_type == 'bool':
+                if type(res) != bool or type(res) != int:
+                    super().error(ErrorType.TYPE_ERROR, '')
+                
+            elif return_type == 'string':
+                if type(res) != str:
+                    super().error(ErrorType.TYPE_ERROR, '')
+            else:
+                if type(res) != list or return_type != res[1]:
+                    super().error(ErrorType.TYPE_ERROR, '')
         return res
 
     def run_if(self, statement):
         cond = self.run_expr(statement.get('condition'))
 
-        if type(cond) != bool:
+        if type(cond) != bool or type(cond) != int:
             super().error(ErrorType.TYPE_ERROR, '')
 
         self.vars.append(({}, False))
@@ -241,7 +290,7 @@ class Interpreter(InterpreterBase):
         while True:
             cond = self.run_expr(statement.get('condition'))
 
-            if type(cond) != bool:
+            if type(cond) != bool or type(cond) != int:
                 super().error(ErrorType.TYPE_ERROR, '')
 
             if ret or not cond: break
@@ -256,6 +305,7 @@ class Interpreter(InterpreterBase):
 
     def run_return(self, statement):
         expr = statement.get('expression')
+        print(expr)
         if expr:
             return self.run_expr(expr)
         return None
@@ -320,14 +370,22 @@ class Interpreter(InterpreterBase):
             super().error(ErrorType.NAME_ERROR, '')
 
         elif kind == 'fcall':
+            for func in self.funcs:
+                if expr.get('name') == func[0] and len(expr.get('args')) == func[1]:
+                    if func[2] == 'void':
+                        super().error(ErrorType.TYPE_ERROR, '')
             return self.run_fcall(expr)
 
         elif kind in self.bops:
             l, r = self.run_expr(expr.get('op1')), self.run_expr(expr.get('op2'))
             tl, tr = type(l), type(r)
 
-            if kind == '==': return tl == tr and l == r
-            if kind == '!=': return not (tl == tr and l == r)
+            if kind == '==': 
+                if (tl == int or tl == bool) and (tr == int or tr == bool):
+                   return l == r 
+                return tl == tr and l == r
+            if kind == '!=': 
+                return not (tl == tr and l == r)
 
             if tl == str and tr == str:
                 if kind == '+': return l + r
@@ -342,9 +400,9 @@ class Interpreter(InterpreterBase):
                 if kind == '>': return l > r
                 if kind == '>=': return l >= r
             
-            if tl == bool and tr == bool:
-                if kind == '&&': return l and r
-                if kind == '||': return l or r
+            if (tl == bool or tl == int) and (tr == bool or tr == int):
+                if kind == '&&': return bool(l and r)
+                if kind == '||': return bool(l or r)
 
             super().error(ErrorType.TYPE_ERROR, '')
 
@@ -364,30 +422,28 @@ class Interpreter(InterpreterBase):
 
 def main():
 	program_source = """
-struct person {
-  name: string;
-  age: int;
+struct dog {
+ bark: int;
+ bite: int;
+}
+struct cat {
+ meow: int;
+ scratch: int;
 }
 
-func foo(a:bool, b: person) : void {
-  b = new person;
-  a = 10;
-  b.age = b.age + 1;
-
-  b = new person;  
-  b.age = 100; 
+func foo(d: dog) : dog {  /* d holds the same object reference that the koda variable holds */
+  d.bark = 10;
+  return d;  		/* this returns the same object reference that the koda variable holds */
 }
 
-func main() : void {
-  print(nil);
-  var x: int;
-  x = 9;
-  var p:person;
-  p = new person;
-  p.age = 18;  
-  foo(x, nil);
-  print(x);   
-  print(p.age);  
+ func main() : void {
+  print(0 == false, true && 0, );
+  var koda: dog;
+  var kippy: dog;
+  koda = new dog;
+  kippy = foo(koda);	/* kippy holds the same object reference as koda */
+  kippy.bite = 20;
+  print(koda.bark, " ", koda.bite); /* prints 10 20 */
 }
 	"""
 	interpreter = Interpreter()
