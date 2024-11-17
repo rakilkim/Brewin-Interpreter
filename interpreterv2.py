@@ -305,7 +305,6 @@ class Interpreter(InterpreterBase):
 
     def run_return(self, statement):
         expr = statement.get('expression')
-        print(expr)
         if expr:
             return self.run_expr(expr)
         return None
@@ -379,12 +378,49 @@ class Interpreter(InterpreterBase):
         elif kind in self.bops:
             l, r = self.run_expr(expr.get('op1')), self.run_expr(expr.get('op2'))
             tl, tr = type(l), type(r)
+            if l == None:
+                tl = None
+            if r == None:
+                tr = None
+            
 
             if kind == '==': 
+                print(tl, tr)
+                print(l, r)
+                if tl == list:
+                    if l[0] != None:
+                        tl = tl[1]
+                    else:
+                        tl = None
+                        l = None
+                if tr == list:
+                    if r[0] != None:
+                        tr = tr[1]
+                    else:
+                        tr = None
+                        r = None
                 if (tl == int or tl == bool) and (tr == int or tr == bool):
-                   return l == r 
+                    return l == r 
+                if tl != tr:
+                    super().error(ErrorType.TYPE_ERROR, '')
                 return tl == tr and l == r
             if kind == '!=': 
+                if tl == list:
+                    if l[0] != None:
+                        tl = tl[1]
+                    else:
+                        tl = None
+                        l = None
+                if tr == list:
+                    if r[0] != None:
+                        tr = tr[1]
+                    else:
+                        tr = None
+                        r = None
+                if (tl == int or tl == bool) and (tr == int or tr == bool):
+                    return l != r 
+                if tl != tr:
+                    super().error(ErrorType.TYPE_ERROR, '')
                 return not (tl == tr and l == r)
 
             if tl == str and tr == str:
@@ -437,13 +473,8 @@ func foo(d: dog) : dog {  /* d holds the same object reference that the koda var
 }
 
  func main() : void {
-  print(0 == false, true && 0, );
-  var koda: dog;
-  var kippy: dog;
-  koda = new dog;
-  kippy = foo(koda);	/* kippy holds the same object reference as koda */
-  kippy.bite = 20;
-  print(koda.bark, " ", koda.bite); /* prints 10 20 */
+  print("hi" == nil);
+
 }
 	"""
 	interpreter = Interpreter()
