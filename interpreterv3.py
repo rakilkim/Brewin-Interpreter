@@ -12,7 +12,7 @@ class Interpreter(InterpreterBase):
 
     def run(self, program):
         ast = parse_program(program)
-        print(ast)
+        #print(ast)
 
         for struct in ast.get('structs'):
             self.structs[struct.get('name')] = struct
@@ -385,8 +385,6 @@ class Interpreter(InterpreterBase):
             
 
             if kind == '==': 
-                print(tl, tr)
-                print(l, r)
                 if tl == list:
                     if l[0] != None:
                         tl = tl[1]
@@ -450,7 +448,7 @@ class Interpreter(InterpreterBase):
 
         elif kind == '!':
             o = self.run_expr(expr.get('op1'))
-            if type(o) == bool: return not o
+            if type(o) == bool or type(o) == int: return not o
 
             super().error(ErrorType.TYPE_ERROR, '')
 
@@ -473,7 +471,7 @@ func foo(d: dog) : dog {  /* d holds the same object reference that the koda var
 }
 
  func main() : void {
-  print("hi" == nil);
+  print(!1);
 
 }
 	"""
