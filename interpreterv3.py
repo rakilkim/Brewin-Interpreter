@@ -68,7 +68,7 @@ class Interpreter(InterpreterBase):
             if len(parts) == 1:
                 return location
             part = parts.pop(0)
-            location = location[part]
+            location = location[part][0]
 
     def run_assign(self, statement):
         name = statement.get('name')
@@ -497,7 +497,6 @@ func cons(val: int, l: list) : list {
     h = new list;
     h.val = val;
     h.next = l;
-
     return h;
 }
 
@@ -540,6 +539,7 @@ func main() : void {
     r = reverse(l);
     print_list(r);
 }
+
 	"""
 	interpreter = Interpreter()
 	interpreter.run(program_source)
