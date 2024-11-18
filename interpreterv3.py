@@ -108,46 +108,6 @@ class Interpreter(InterpreterBase):
             if type_a != location[n][1]:
                 super().error(ErrorType.TYPE_ERROR, '')
             location[n] = [a, type_a]
-            #print(location, 'after', n)
-            #print(self.vars[-1][0])
-            return
-            # parts = name.split('.')
-            # part = parts.pop(0)
-            # location = None
-            # for scope_vars, is_func in self.vars[::-1]:
-            #     if part in scope_vars:
-            #         if scope_vars[part][1] == 'bool' or scope_vars[part][1] == 'int' or scope_vars[part][1] == 'string':
-            #             super().error(ErrorType.TYPE_ERROR, '')
-            #         if scope_vars[part][0] == None:
-            #             super().error(ErrorType.FAULT_ERROR, '')
-            #         location = scope_vars[part][0][0]
-            #         break
-            #     if is_func: 
-            #         super().error(ErrorType.NAME_ERROR, '')
-            # print(location)
-            # print(parts)
-            # print(part)
-            # while parts:
-            #     if parts[0] not in location:
-            #         super().error(ErrorType.NAME_ERROR, '')
-            #     if len(parts) == 1:
-            #         a = self.run_expr(statement.get('expression'))
-            #         type_a = type(a)
-            #         if type(a) == bool:
-            #             type_a = 'bool'
-            #         elif type(a) == int:
-            #             type_a = 'int'
-            #         elif type(a) == str:
-            #             type_a = 'string'
-            #         else:
-            #             type_a = a[1]
-            #             a = a[0]
-            #         if type_a != location[parts[0]][1]:
-            #             super().error(ErrorType.TYPE_ERROR, '')
-            #         location[parts[0]] = [a, type_a]
-            #         return
-            #     part = parts.pop(0)
-            #     location = location[part]
         else:
             for scope_vars, is_func in self.vars[::-1]:
                 if name in scope_vars:
@@ -422,10 +382,6 @@ class Interpreter(InterpreterBase):
         elif kind in self.bops:
             l, r = self.run_expr(expr.get('op1')), self.run_expr(expr.get('op2'))
             tl, tr = type(l), type(r)
-            # print('2tl: ', tl)
-            # print('2tr: ', tr)
-            # print('2l: ', l)
-            # print('2r: ', r)
             if tl == list and tr == list:
                 if l[1] != r[1]:
                     super().error(ErrorType.TYPE_ERROR, '')
