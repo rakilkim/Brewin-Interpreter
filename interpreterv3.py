@@ -75,6 +75,7 @@ class Interpreter(InterpreterBase):
         if '.' in name:
             n = name.split('.')[-1]
             location = self.find_var(name)
+            #print(location)
             a = self.run_expr(statement.get('expression'))
             type_a = type(a)
             if type(a) == bool:
@@ -92,6 +93,8 @@ class Interpreter(InterpreterBase):
             if type_a != location[n][1]:
                 super().error(ErrorType.TYPE_ERROR, '')
             location[n] = [a, type_a]
+            #print(location, 'after', n)
+            #print(self.vars[-1][0])
             return
             # parts = name.split('.')
             # part = parts.pop(0)
@@ -184,9 +187,11 @@ class Interpreter(InterpreterBase):
 
             for arg in args:
                 c_out = self.run_expr(arg)
+                if type(c_out) == list:
+                    c_out = c_out[0]
                 if type(c_out) == bool:
                     out += str(c_out).lower()
-                elif c_out == None or type(c_out) == list:
+                elif c_out == None:
                     out += 'nil'
                 else:
                     out += str(c_out)
@@ -208,6 +213,8 @@ class Interpreter(InterpreterBase):
         passed_args = []
         for i in range(len(args)): # run all the args, and check if they match the types of the function's args
             a = self.run_expr(args[i])
+            # if type(a) == list and '.' in args[i].get('name'):
+            #     a = a[0]
             type_a = type(a)
             param_type = func_def.get('args')[i].get('var_type')
             if type(a) == bool:
@@ -224,10 +231,18 @@ class Interpreter(InterpreterBase):
                     if a == None:
                         type_a = param_type
                     else:
+                        #print(a)
                         type_a = a[1]
                         a = a[0]
                 else:
-                    type_a = 'error'
+                    if type(a) == list:
+                        if a[0] == None:
+                            type_a = 'error'
+                        else:
+                            type_a = a[1]
+                            a = a[0]
+                    else:
+                        type_a = 'error'
             if type_a != param_type:
                 super().error(ErrorType.TYPE_ERROR, '') 
             passed_args.append([a, type_a])
@@ -266,7 +281,7 @@ class Interpreter(InterpreterBase):
     def run_if(self, statement):
         cond = self.run_expr(statement.get('condition'))
 
-        if type(cond) != bool or type(cond) != int:
+        if type(cond) != bool and type(cond) != int:
             super().error(ErrorType.TYPE_ERROR, '')
 
         self.vars.append(({}, False))
@@ -289,8 +304,8 @@ class Interpreter(InterpreterBase):
 
         while True:
             cond = self.run_expr(statement.get('condition'))
-
-            if type(cond) != bool or type(cond) != int:
+            #print(cond)
+            if type(cond) != bool and type(cond) != int:
                 super().error(ErrorType.TYPE_ERROR, '')
 
             if ret or not cond: break
@@ -357,7 +372,7 @@ class Interpreter(InterpreterBase):
         elif kind == 'var':
             var_name = expr.get('name')
             if '.' in var_name:
-                return self.find_var(var_name)[var_name.split('.')[-1]][0]
+                return self.find_var(var_name)[var_name.split('.')[-1]]
             for scope_vars, is_func in self.vars[::-1]:
                 if var_name in scope_vars:
                     if scope_vars[var_name][1] != 'bool' and scope_vars[var_name][1] != 'int' and scope_vars[var_name][1] != 'string':
@@ -378,6 +393,10 @@ class Interpreter(InterpreterBase):
         elif kind in self.bops:
             l, r = self.run_expr(expr.get('op1')), self.run_expr(expr.get('op2'))
             tl, tr = type(l), type(r)
+            # print('2tl: ', tl)
+            # print('2tr: ', tr)
+            # print('2l: ', l)
+            # print('2r: ', r)
             if l == None:
                 tl = None
             if r == None:
@@ -387,31 +406,43 @@ class Interpreter(InterpreterBase):
             if kind == '==': 
                 if tl == list:
                     if l[0] != None:
-                        tl = tl[1]
+                        if r == None:
+                            return False
+                        tl = l[1]
                     else:
                         tl = None
                         l = None
                 if tr == list:
                     if r[0] != None:
-                        tr = tr[1]
+                        if l == None:
+                            return False
+                        tr = r[1]
                     else:
                         tr = None
                         r = None
                 if (tl == int or tl == bool) and (tr == int or tr == bool):
                     return l == r 
+                # print('1tl: ', tl)
+                # print('1tr: ', tr)
+                # print('1l: ', l)
+                # print('1r: ', r)
                 if tl != tr:
                     super().error(ErrorType.TYPE_ERROR, '')
                 return tl == tr and l == r
             if kind == '!=': 
                 if tl == list:
                     if l[0] != None:
-                        tl = tl[1]
+                        if r == None:
+                            return True
+                        tl = l[1]
                     else:
                         tl = None
                         l = None
                 if tr == list:
                     if r[0] != None:
-                        tr = tr[1]
+                        if l == None:
+                            return True
+                        tr = r[1]
                     else:
                         tr = None
                         r = None
@@ -456,23 +487,58 @@ class Interpreter(InterpreterBase):
 
 def main():
 	program_source = """
-struct dog {
- bark: int;
- bite: int;
-}
-struct cat {
- meow: int;
- scratch: int;
+struct list {
+    val: int;
+    next: list;
 }
 
-func foo(d: dog) : dog {  /* d holds the same object reference that the koda variable holds */
-  d.bark = 10;
-  return d;  		/* this returns the same object reference that the koda variable holds */
+func cons(val: int, l: list) : list {
+    var h: list;
+    h = new list;
+    h.val = val;
+    h.next = l;
+
+    return h;
 }
 
- func main() : void {
-  print(!1);
+func rev_app(l: list, a: list) : list {
+    if (l == nil) {
+        return a;
+    }
 
+    return rev_app(l.next, cons(l.val, a));
+}
+
+func reverse(l: list) : list {
+    var a: list;
+
+    return rev_app(l, a);
+}
+
+func print_list(l: list): void {
+    var x: list;
+    var n: int;
+    for (x = l; x != nil; x = x.next) {
+        print(x.val);
+        n = n + 1;
+    }
+    print("N=", n);
+}
+
+func main() : void {
+    var n: int;
+    var i: int;
+    var l: list;
+    var r: list;
+
+    n = inputi();
+    for (i = n; i; i = i - 1) {
+        var n: int;
+        n = inputi();
+        l = cons(n, l);
+    }
+    r = reverse(l);
+    print_list(r);
 }
 	"""
 	interpreter = Interpreter()
