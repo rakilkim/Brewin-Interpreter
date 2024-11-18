@@ -1,5 +1,6 @@
 from intbase import InterpreterBase, ErrorType
 from brewparse import parse_program
+import os
 
 class Interpreter(InterpreterBase):
     def __init__(self, console_output=True, inp=None, trace_output=False):
@@ -12,13 +13,19 @@ class Interpreter(InterpreterBase):
 
     def run(self, program):
         ast = parse_program(program)
-        #print(ast)
+        print(ast)
 
         for struct in ast.get('structs'):
             self.structs[struct.get('name')] = struct
 
         for func in ast.get('functions'):
-            self.funcs[(func.get('name'),len(func.get('args')),func.get('return_type'))] = func
+            return_type = func.get('return_type')
+            if return_type not in ['int', 'bool', 'string', 'void'] and return_type not in self.structs:
+                super().error(ErrorType.TYPE_ERROR, '')
+            for arg in func.get('args'):
+                if arg.get('var_type') not in ['int', 'bool', 'string'] and arg.get('var_type') not in self.structs:
+                    super().error(ErrorType.TYPE_ERROR, '')
+            self.funcs[(func.get('name'),len(func.get('args')),return_type)] = func
 
         main_key = None
         for k in self.funcs:
@@ -33,7 +40,8 @@ class Interpreter(InterpreterBase):
 
     def run_vardef(self, statement):
         name, var_type = statement.get('name'), statement.get('var_type')
-
+        if var_type == None:
+            super().error(ErrorType.TYPE_ERROR, '')
         if name in self.vars[-1][0]:
             super().error(ErrorType.NAME_ERROR, '')
         if var_type == 'bool':
@@ -43,6 +51,8 @@ class Interpreter(InterpreterBase):
         elif var_type == 'string':
             self.vars[-1][0][name] = ['', var_type]
         else:
+            if var_type not in self.structs:
+                super().error(ErrorType.TYPE_ERROR, '')
             self.vars[-1][0][name] = [None, var_type]
 
     def find_var(self, name):
@@ -253,6 +263,7 @@ class Interpreter(InterpreterBase):
         self.vars.append(({k:v for k,v in zip(template_args, passed_args)}, True))
         res, ret = self.run_statements(func_def.get('statements'))
         self.vars.pop()
+        
         if return_type == 'void' and res != None:
             super().error(ErrorType.TYPE_ERROR, '')
         if res == None:
@@ -264,13 +275,19 @@ class Interpreter(InterpreterBase):
                 return ''
         else:
             if return_type == 'int':
+                if type(res) == list:
+                    res = res[0]
                 if type(res) != int:
                     super().error(ErrorType.TYPE_ERROR, '')
             elif return_type == 'bool':
-                if type(res) != bool or type(res) != int:
+                if type(res) == list:
+                    res = bool(res[0])
+                if type(res) != bool and type(res) != int:
                     super().error(ErrorType.TYPE_ERROR, '')
-                
+                res = bool(res)
             elif return_type == 'string':
+                if type(res) == list:
+                    res = res[0]
                 if type(res) != str:
                     super().error(ErrorType.TYPE_ERROR, '')
             else:
@@ -401,7 +418,6 @@ class Interpreter(InterpreterBase):
                 tl = None
             if r == None:
                 tr = None
-            
 
             if kind == '==': 
                 if tl == list:
@@ -451,10 +467,15 @@ class Interpreter(InterpreterBase):
                 if tl != tr:
                     super().error(ErrorType.TYPE_ERROR, '')
                 return not (tl == tr and l == r)
-
+            if tl == list:
+                tl = type(l[0])
+                l = l[0]
+            if tr == list:
+                tr = type(r[0])
+                r = r[0]
             if tl == str and tr == str:
                 if kind == '+': return l + r
-
+            #print(tl, tr, "here")
             if tl == int and tr == int:
                 if kind == '+': return l + r
                 if kind == '-': return l - r
@@ -486,62 +507,21 @@ class Interpreter(InterpreterBase):
         return None
 
 def main():
-	program_source = """
-struct list {
-    val: int;
-    next: list;
+    program_source = """
+func incorrect() : int{
+var x : int;
+}
+func main() : void{
+print("hi");
+incorrect();
+var x : int;
+x = nil;
+print(x);
 }
 
-func cons(val: int, l: list) : list {
-    var h: list;
-    h = new list;
-    h.val = val;
-    h.next = l;
-    return h;
-}
-
-func rev_app(l: list, a: list) : list {
-    if (l == nil) {
-        return a;
-    }
-
-    return rev_app(l.next, cons(l.val, a));
-}
-
-func reverse(l: list) : list {
-    var a: list;
-
-    return rev_app(l, a);
-}
-
-func print_list(l: list): void {
-    var x: list;
-    var n: int;
-    for (x = l; x != nil; x = x.next) {
-        print(x.val);
-        n = n + 1;
-    }
-    print("N=", n);
-}
-
-func main() : void {
-    var n: int;
-    var i: int;
-    var l: list;
-    var r: list;
-
-    n = inputi();
-    for (i = n; i; i = i - 1) {
-        var n: int;
-        n = inputi();
-        l = cons(n, l);
-    }
-    r = reverse(l);
-    print_list(r);
-}
 
 	"""
-	interpreter = Interpreter()
-	interpreter.run(program_source)
+    interpreter = Interpreter()
+    interpreter.run(program_source)
 if __name__ == "__main__":
 	main()
