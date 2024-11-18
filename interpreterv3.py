@@ -108,6 +108,7 @@ class Interpreter(InterpreterBase):
             if type_a != location[n][1]:
                 super().error(ErrorType.TYPE_ERROR, '')
             location[n] = [a, type_a]
+            return
         else:
             for scope_vars, is_func in self.vars[::-1]:
                 if name in scope_vars:
