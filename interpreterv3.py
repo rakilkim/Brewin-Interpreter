@@ -13,7 +13,7 @@ class Interpreter(InterpreterBase):
 
     def run(self, program):
         ast = parse_program(program)
-        print(ast)
+        #print(ast)
 
         for struct in ast.get('structs'):
             self.structs[struct.get('name')] = struct
@@ -69,10 +69,12 @@ class Interpreter(InterpreterBase):
                 break
             if is_func: 
                 super().error(ErrorType.NAME_ERROR, '')
-        # print(location)
-        # print(parts)
-        # print(part)
+        # print(location, '...')
+        # print(parts, '...')
+        # print(part, '...')
         while parts:
+            if location == None:
+                super().error(ErrorType.FAULT_ERROR, '')
             if parts[0] not in location:
                 super().error(ErrorType.NAME_ERROR, '')
             if len(parts) == 1:
@@ -98,8 +100,11 @@ class Interpreter(InterpreterBase):
             elif type(a) == str:
                 type_a = 'string'
             else:
-                type_a = a[1]
-                a = a[0]
+                if a == None and location[n][1] != 'bool' and location[n][1] != 'int' and location[n][1] != 'string':
+                    type_a = location[n][1]
+                else:
+                    type_a = a[1]
+                    a = a[0]
             if type_a != location[n][1]:
                 super().error(ErrorType.TYPE_ERROR, '')
             location[n] = [a, type_a]
@@ -263,7 +268,7 @@ class Interpreter(InterpreterBase):
         self.vars.append(({k:v for k,v in zip(template_args, passed_args)}, True))
         res, ret = self.run_statements(func_def.get('statements'))
         self.vars.pop()
-        
+
         if return_type == 'void' and res != None:
             super().error(ErrorType.TYPE_ERROR, '')
         if res == None:
@@ -337,6 +342,7 @@ class Interpreter(InterpreterBase):
 
     def run_return(self, statement):
         expr = statement.get('expression')
+
         if expr:
             return self.run_expr(expr)
         return None
@@ -361,6 +367,10 @@ class Interpreter(InterpreterBase):
                 if ret: break
             elif kind == 'return':
                 res = self.run_return(statement)
+                if type(res) == list and res[1] == 'nil':
+                    ret = [True, 'nil']
+                    res = None
+                    break
                 ret = True
                 break
 
@@ -372,6 +382,8 @@ class Interpreter(InterpreterBase):
         if kind == 'new':
             struct_name = expr.get('var_type')
             struct = {}
+            if struct_name not in self.structs:
+                super().error(ErrorType.TYPE_ERROR, '')
             for field in self.structs[struct_name].get('fields'):
                 if field.get('var_type') == 'bool':
                     struct[field.get('name')] = [False, 'bool']
@@ -414,6 +426,9 @@ class Interpreter(InterpreterBase):
             # print('2tr: ', tr)
             # print('2l: ', l)
             # print('2r: ', r)
+            if tl == list and tr == list:
+                if l[1] != r[1]:
+                    super().error(ErrorType.TYPE_ERROR, '')
             if l == None:
                 tl = None
             if r == None:
@@ -446,6 +461,8 @@ class Interpreter(InterpreterBase):
                     super().error(ErrorType.TYPE_ERROR, '')
                 return tl == tr and l == r
             if kind == '!=': 
+                if tl == tr:
+                    return not (l == r)
                 if tl == list:
                     if l[0] != None:
                         if r == None:
@@ -508,18 +525,24 @@ class Interpreter(InterpreterBase):
 
 def main():
     program_source = """
-func incorrect() : int{
-var x : int;
+struct circle {
+  r: int;
 }
-func main() : void{
-print("hi");
-incorrect();
-var x : int;
-x = nil;
-print(x);
+
+struct square {
+  s: int;
 }
 
 
+func main(): void {
+  var c: circle;
+  var s: square;
+
+  print(c == s);
+
+  s = new square;
+  print(c == s);
+}
 	"""
     interpreter = Interpreter()
     interpreter.run(program_source)
