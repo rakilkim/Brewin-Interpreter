@@ -32,9 +32,9 @@ class Interpreter(InterpreterBase):
 
     def run(self, program):
         ast = parse_program(program)
-        print("")
-        print(ast)
-        print("")
+        # print("")
+        # print(ast)
+        # print("")
         for func in ast.get('functions'):
             self.funcs[(func.get('name'),len(func.get('args')))] = func
 
@@ -249,6 +249,29 @@ class Interpreter(InterpreterBase):
             return self.run_fcall(expr)
 
         elif kind in self.bops:
+            if kind == '&&': 
+                l = self.run_expr(expr.get('op1'))
+                if type(l) == bool:
+                    if not l: return False
+                elif type(l) == list:
+                    return l
+                r = self.run_expr(expr.get('op2'))
+                if type(r) == bool:
+                    return r
+                elif type(r) == list:
+                    return r
+            if kind == '||': 
+                l = self.run_expr(expr.get('op1'))
+                if type(l) == bool:
+                    if l: return True
+                elif type(l) == list:
+                    return l
+                r = self.run_expr(expr.get('op2'))
+                if type(r) == bool:
+                    return r
+                elif type(r) == list:
+                    return r
+                
             l, r = self.run_expr(expr.get('op1')), self.run_expr(expr.get('op2'))
             tl, tr = type(l), type(r)
             if tl == list:
@@ -273,10 +296,6 @@ class Interpreter(InterpreterBase):
                 if kind == '<=': return l <= r
                 if kind == '>': return l > r
                 if kind == '>=': return l >= r
-            
-            if tl == bool and tr == bool:
-                if kind == '&&': return l and r
-                if kind == '||': return l or r
 
             super().error(ErrorType.TYPE_ERROR, '')
 
@@ -296,39 +315,22 @@ class Interpreter(InterpreterBase):
 
 def main():
     program_source = """
-func foo() {
-  try {
-    raise "z";
-  }
-  catch "x" {
-    print("x");
-  }
-  catch "y" {
-    print("y");
-  }
-  catch "z" {
-    print("z");
-    raise "a";
-  }
-  print("q");
+func t() {
+ print("t");
+ return true;
+}
+
+func f() {
+ print("f");
+ return false;
 }
 
 func main() {
-  try {
-    var x;
-    if (true) {
-    foo();
-    print("b");
-    var x;
-    }
-  }
-  catch "a" {
-    print("a");
-  }
-  catch "div0" {
-    print("divided by 0");
-  }
+  print(t() && f());
+  print("---");
+  print(f() && t());
 }
+
 	"""
     interpreter = Interpreter()
     interpreter.run(program_source)
