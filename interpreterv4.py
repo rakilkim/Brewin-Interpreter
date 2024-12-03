@@ -1,12 +1,27 @@
 from intbase import InterpreterBase, ErrorType
 from brewparse import parse_program
+import copy
 
 # if/for conditionals, arguments of standalone calls to inputi/inputs/print, raise
 class Interpreter(InterpreterBase):
     class Thunk:
-        def __init__(self, expr):
+        cache = []
+        def __init__(self, expr, snapshot):
             self.expr = expr  
             self.value = None  
+            self.snapshot = copy.deepcopy(snapshot)
+        def evaluate(self, interpreter):
+            if self.value is None:
+                for expr, val in self.cache:
+                    if str(self.expr) == str(expr):
+                        self.value = val
+                        return self.value
+                original = interpreter.vars
+                interpreter.vars = self.snapshot
+                self.value = interpreter.run_expr(self.expr)
+                self.cache.append((self.expr, self.value))
+                interpreter.vars = original
+            return self.value
     
     def __init__(self, console_output=True, inp=None, trace_output=False):
         super().__init__(console_output, inp)
@@ -17,7 +32,9 @@ class Interpreter(InterpreterBase):
 
     def run(self, program):
         ast = parse_program(program)
-
+        print("")
+        print(ast)
+        print("")
         for func in ast.get('functions'):
             self.funcs[(func.get('name'),len(func.get('args')))] = func
 
@@ -46,8 +63,7 @@ class Interpreter(InterpreterBase):
 
         for scope_vars, is_func in self.vars[::-1]:
             if name in scope_vars:
-                # scope_vars[name] = self.run_expr(statement.get('expression'))
-                scope_vars[name] = self.Thunk(statement.get('expression'))
+                scope_vars[name] = self.Thunk(statement.get('expression'), self.vars)
                 return
 
             if is_func: break
@@ -73,6 +89,8 @@ class Interpreter(InterpreterBase):
 
             for arg in args:
                 c_out = self.run_expr(arg)
+                if type(c_out) == list:
+                    return c_out
                 if type(c_out) == bool:
                     out += str(c_out).lower()
                 else:
@@ -88,7 +106,7 @@ class Interpreter(InterpreterBase):
         func_def = self.funcs[(fcall_name, len(args))]
 
         template_args = [a.get('name') for a in func_def.get('args')]
-        passed_args = [self.Thunk(a) for a in args]
+        passed_args = [self.Thunk(a, self.vars) for a in args]
 
         self.vars.append(({k:v for k,v in zip(template_args, passed_args)}, True))
         res, _ = self.run_statements(func_def.get('statements'))
@@ -135,6 +153,32 @@ class Interpreter(InterpreterBase):
             self.run_assign(statement.get('update'))
 
         return res, ret
+    
+    def run_try(self, statement):
+        res, ret = None, False
+
+        self.vars.append(({}, False))
+
+        res, ret = self.run_statements(statement.get('statements'))
+
+        self.vars.pop()
+
+        catchers = statement.get('catchers')
+
+        for catcher in catchers:
+            if type(res) == list and catcher.get('exception_type') == res[0]:
+                self.vars.append(({}, False))
+                res, ret = self.run_statements(catcher.get('statements'))
+                self.vars.pop()
+                break
+
+        return res, ret
+    
+    def run_raise(self, statement):
+        raise_val = self.run_expr(statement.get('exception_type'))
+        if type(raise_val) != str:
+            super().error(ErrorType.TYPE_ERROR, '')
+        return [raise_val]
 
     def run_return(self, statement):
         expr = statement.get('expression')
@@ -147,30 +191,32 @@ class Interpreter(InterpreterBase):
 
         for statement in statements:
             kind = statement.elem_type
-
+            if res and not ret:
+                break
             if kind == 'vardef':
                 self.run_vardef(statement)
             elif kind == '=':
                 self.run_assign(statement)
             elif kind == 'fcall':
-                self.run_fcall(statement)
+                res = self.run_fcall(statement)
             elif kind == 'if':
                 res, ret = self.run_if(statement)
                 if ret: break
             elif kind == 'for':
                 res, ret = self.run_for(statement)
                 if ret: break
+            elif kind == 'try':
+                res, ret = self.run_try(statement)
+                if ret: break
+            elif kind == 'raise':
+                res = self.run_raise(statement)
+                break
             elif kind == 'return':
                 res = self.run_return(statement)
                 ret = True
                 break
 
         return res, ret
-    
-    def evaluate(self, thunk):
-        if thunk.value is None:
-            thunk.value = self.run_expr(thunk.expr)
-        return thunk.value
 
     def run_expr(self, expr):
         kind = expr.elem_type
@@ -183,7 +229,7 @@ class Interpreter(InterpreterBase):
 
             for scope_vars, is_func in self.vars[::-1]:
                 if var_name in scope_vars:
-                    return self.evaluate(scope_vars[var_name])
+                    return scope_vars[var_name].evaluate(self)
 
                 if is_func: break
 
@@ -195,7 +241,10 @@ class Interpreter(InterpreterBase):
         elif kind in self.bops:
             l, r = self.run_expr(expr.get('op1')), self.run_expr(expr.get('op2'))
             tl, tr = type(l), type(r)
-
+            if tl == list:
+                return l
+            if tr == list:
+                return r
             if kind == '==': return tl == tr and l == r
             if kind == '!=': return not (tl == tr and l == r)
 
@@ -232,9 +281,38 @@ class Interpreter(InterpreterBase):
 
         return None
 
-
 def main():
     program_source = """
+func foo() {
+  try {
+    raise "z";
+  }
+  catch "x" {
+    print("x");
+  }
+  catch "y" {
+    print("y");
+  }
+  catch "z" {
+    print("z");
+    raise "a";
+  }
+  print("q");
+}
+
+func main() {
+  try {
+    foo();
+    print("b");
+  }
+  catch "a" {
+    print("a");
+  }
+}
+	"""
+    interpreter = Interpreter()
+    interpreter.run(program_source)
+'''
 func main() {
   var result;
   result = f(3) + 10;
@@ -251,9 +329,6 @@ func f(x) {
   print("f is about to return");
   return y;
 }
-	"""
-    interpreter = Interpreter()
-    interpreter.run(program_source)
-
+'''
 if __name__ == '__main__':
     main()
