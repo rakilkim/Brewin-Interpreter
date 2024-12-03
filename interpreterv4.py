@@ -2,7 +2,6 @@ from intbase import InterpreterBase, ErrorType
 from brewparse import parse_program
 import copy
 
-# if/for conditionals, arguments of standalone calls to inputi/inputs/print, raise
 class Interpreter(InterpreterBase):
     class Thunk:
         cache = []
@@ -290,7 +289,7 @@ class Interpreter(InterpreterBase):
                 if kind == '*': return l * r
                 if kind == '/': 
                     if r == 0:
-                        return ["div0"]
+                        return ['div0']
                     return l // r
                 if kind == '<': return l < r
                 if kind == '<=': return l <= r
@@ -315,42 +314,23 @@ class Interpreter(InterpreterBase):
 
 def main():
     program_source = """
-func t() {
- print("t");
- return true;
-}
-
-func f() {
- print("f");
- return false;
+func bar(x) {
+ print("bar: ", x);
+ return x;
 }
 
 func main() {
-  print(t() && f());
-  print("---");
-  print(f() && t());
+ var a;
+ a = bar("5");
+ print("---");
+ var b;
+ b = inputi(a);
+ print("---");
+ print(b);
 }
-
 	"""
     interpreter = Interpreter()
     interpreter.run(program_source)
-'''
-func main() {
-  var result;
-  result = f(3) + 10;
-  print("done with call!");
-  print(result);  /* evaluation of result happens here */
-  print("about to print result again");
-  print(result);
-}
 
-func f(x) {
-  print("f is running");
-  var y;
-  y = 2 * x;
-  print("f is about to return");
-  return y;
-}
-'''
 if __name__ == '__main__':
     main()
