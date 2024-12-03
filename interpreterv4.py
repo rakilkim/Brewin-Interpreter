@@ -255,7 +255,10 @@ class Interpreter(InterpreterBase):
                 if kind == '+': return l + r
                 if kind == '-': return l - r
                 if kind == '*': return l * r
-                if kind == '/': return l // r
+                if kind == '/': 
+                    if r == 0:
+                        return ["div0"]
+                    return l // r
                 if kind == '<': return l < r
                 if kind == '<=': return l <= r
                 if kind == '>': return l > r
@@ -283,30 +286,18 @@ class Interpreter(InterpreterBase):
 
 def main():
     program_source = """
-func foo() {
-  try {
-    raise "z";
-  }
-  catch "x" {
-    print("x");
-  }
-  catch "y" {
-    print("y");
-  }
-  catch "z" {
-    print("z");
-    raise "a";
-  }
-  print("q");
+func divide(a, b) {
+  return a / b;
 }
 
 func main() {
   try {
-    foo();
-    print("b");
+    var result;
+    result = divide(10, 0);  /* evaluation deferred due to laziness */
+    print("Result: ", result); /* evaluation occurs here */
   }
-  catch "a" {
-    print("a");
+  catch "div0" {
+    print("Caught division by zero!");
   }
 }
 	"""
