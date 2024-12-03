@@ -12,7 +12,7 @@ class Interpreter(InterpreterBase):
         def evaluate(self, interpreter):
             if self.value is None:
                 for expr, val in self.cache:
-                    if str(self.expr) == str(expr):
+                    if self.expr == expr:
                         self.value = val
                         return self.value
                 original = interpreter.vars
