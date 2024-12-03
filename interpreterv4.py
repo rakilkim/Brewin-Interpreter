@@ -48,7 +48,9 @@ class Interpreter(InterpreterBase):
         if main_key is None:
             super().error(ErrorType.NAME_ERROR, '')
 
-        self.run_fcall(self.funcs[main_key])
+        res = self.run_fcall(self.funcs[main_key])
+        if type(res) == list:
+            super().error(ErrorType.FAULT_ERROR, '')
 
     def run_vardef(self, statement):
         name = statement.get('name')
@@ -286,18 +288,31 @@ class Interpreter(InterpreterBase):
 
 def main():
     program_source = """
-func divide(a, b) {
-  return a / b;
+func foo() {
+  try {
+    raise "z";
+  }
+  catch "x" {
+    print("x");
+  }
+  catch "y" {
+    print("y");
+  }
+  catch "z" {
+    print("z");
+    raise "a";
+  }
+  print("q");
 }
 
 func main() {
   try {
-    var result;
-    result = divide(10, 0);  /* evaluation deferred due to laziness */
-    print("Result: ", result); /* evaluation occurs here */
+    foo();
+    print("b");
+    var x;
   }
-  catch "div0" {
-    print("Caught division by zero!");
+  catch "a" {
+    print("a");
   }
 }
 	"""
