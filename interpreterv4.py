@@ -119,6 +119,8 @@ class Interpreter(InterpreterBase):
     def run_if(self, statement):
         cond = self.run_expr(statement.get('condition'))
 
+        if type(cond) == list:
+            return cond, False
         if type(cond) != bool:
             super().error(ErrorType.TYPE_ERROR, '')
 
@@ -143,6 +145,9 @@ class Interpreter(InterpreterBase):
         while True:
             cond = self.run_expr(statement.get('condition'))
 
+            if type(cond) == list:
+                return cond, False
+
             if type(cond) != bool:
                 super().error(ErrorType.TYPE_ERROR, '')
 
@@ -151,6 +156,9 @@ class Interpreter(InterpreterBase):
             self.vars.append(({}, False))
             res, ret = self.run_statements(statement.get('statements'))
             self.vars.pop()
+
+            if type(res) == list:
+                return res, False
 
             self.run_assign(statement.get('update'))
 
@@ -307,12 +315,18 @@ func foo() {
 
 func main() {
   try {
+    var x;
+    if (true) {
     foo();
     print("b");
     var x;
+    }
   }
   catch "a" {
     print("a");
+  }
+  catch "div0" {
+    print("divided by 0");
   }
 }
 	"""
