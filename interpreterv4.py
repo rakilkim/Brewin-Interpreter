@@ -192,7 +192,7 @@ class Interpreter(InterpreterBase):
     def run_return(self, statement):
         expr = statement.get('expression')
         if expr:
-            return self.Thunk(expr, self.vars)
+            return self.run_expr(expr)
         return None
 
     def run_statements(self, statements):
