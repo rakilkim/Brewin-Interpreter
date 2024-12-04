@@ -11,14 +11,14 @@ class Interpreter(InterpreterBase):
             self.snapshot = copy.deepcopy(snapshot)
         def evaluate(self, interpreter):
             if self.value is None:
-                for expr, val in self.cache:
-                    if self.expr == expr:
+                for expr, snapshot, val in self.cache:
+                    if str(self.expr)+str(self.snapshot) == str(expr)+str(snapshot):
                         self.value = val
                         return self.value
                 original = interpreter.vars
                 interpreter.vars = self.snapshot
                 self.value = interpreter.run_expr(self.expr)
-                self.cache.append((self.expr, self.value))
+                self.cache.append((self.expr, self.snapshot, self.value))
                 interpreter.vars = original
             return self.value
     
@@ -200,7 +200,7 @@ class Interpreter(InterpreterBase):
 
         for statement in statements:
             kind = statement.elem_type
-            if res and not ret:
+            if type(res) == list and not ret:
                 break
             if kind == 'vardef':
                 self.run_vardef(statement)
@@ -314,19 +314,21 @@ class Interpreter(InterpreterBase):
 
 def main():
     program_source = """
-func bar(x) {
- print("bar: ", x);
- return x;
+func zero() {
+  print("zero");
+  return 0;
+}
+
+func inc(x) {
+ return x + 1;
 }
 
 func main() {
  var a;
- a = bar("5");
- print("---");
- var b;
- b = inputi(a);
- print("---");
- print(b);
+ for (a = 0; a < 3; a = a+1) {
+   print("x");
+ }
+ print("d");
 }
 	"""
     interpreter = Interpreter()
@@ -334,3 +336,12 @@ func main() {
 
 if __name__ == '__main__':
     main()
+
+"""
+var x;
+var y;
+ x = 5;
+y = x + 10;
+x = 100;
+print(y);
+"""
