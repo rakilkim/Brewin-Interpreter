@@ -192,7 +192,7 @@ class Interpreter(InterpreterBase):
     def run_return(self, statement):
         expr = statement.get('expression')
         if expr:
-            return self.run_expr(expr)
+            return self.Thunk(expr, self.vars)
         return None
 
     def run_statements(self, statements):
@@ -314,21 +314,18 @@ class Interpreter(InterpreterBase):
 
 def main():
     program_source = """
-func zero() {
-  print("zero");
-  return 0;
+func foo() {
+  print("foo");
+  return bar();
 }
 
-func inc(x) {
- return x + 1;
+func bar() {
+  print("bar");
+  raise "a";
 }
 
 func main() {
- var a;
- for (a = 0; a < 3; a = a+1) {
-   print("x");
- }
- print("d");
+  foo();
 }
 	"""
     interpreter = Interpreter()
