@@ -314,19 +314,14 @@ class Interpreter(InterpreterBase):
 
 def main():
     program_source = """
-func foo() {
-  print("foo");
-  return bar();
-}
-
-func bar() {
-  print("bar");
-  raise "a";
-}
-
 func main() {
-  foo();
+  var x;
+  x = foo(y);
+  print("OK");
+  print(x);
 }
+
+
 	"""
     interpreter = Interpreter()
     interpreter.run(program_source)
